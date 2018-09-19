@@ -5,13 +5,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.collections import EllipseCollection
 
-N = 30
-R = 2.6
+N = 1
+R = 2.0
 nout = 100
 timesteps = 100
-kdash = 1.0/5.0
-k = 2.0
+kdash = 5.0/1.0
+k = 1.5
 T = 1.0
+p = 0.01
 
 
 def plot(filename, sim):
@@ -39,6 +40,7 @@ def plot(filename, sim):
 
 sim = cell_pattern.Simulation()
 sim.set_num_internal(N)
+sim.set_proliferation_rate(p)
 sim.set_temperature(T)
 sim.set_circle_radius(R)
 sim.set_kdash(kdash)
