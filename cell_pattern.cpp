@@ -120,15 +120,20 @@ class Simulation {
   double m_temperature{1.0};
   double m_circle_radius{5.0};
   double m_proliferation_rate{0.001};
-  int m_num_external;
-  int m_num_internal;
+  double m_potential_well_scaling{1};
+  int m_num_external{-1};
+  int m_num_internal{20};
+  int m_max_internal{20};
   std::default_random_engine m_gen;
 
 public:
   Particles_t particles;
 
   void initialise() {
-    m_num_external = std::ceil(2 * pi * m_circle_radius / (m_k * m_sigma_s));
+    if (m_num_external < 0) {
+      m_num_external = std::ceil(2 * pi * m_circle_radius / (m_k * m_sigma_s));
+    }
+    // m_num_external = 0;
     particles.resize(m_num_internal + m_num_external);
     GayBernePotential potential(m_sigma_s, m_k, m_kdash, m_mu, m_nu,
                                 m_epsilon_0);
@@ -145,10 +150,14 @@ public:
     for (int i = m_num_external; i < particles.size(); ++i) {
       bool overlap;
       do {
-        do {
-          get<position>(particles)[i] =
-              m_circle_radius * vdouble2(uniform(m_gen), uniform(m_gen));
-        } while (get<position>(particles)[i].norm() > m_circle_radius);
+        if (i == m_num_external) {
+          get<position>(particles)[i] = vdouble2(0, 0);
+        } else {
+          do {
+            get<position>(particles)[i] =
+                m_circle_radius * vdouble2(uniform(m_gen), uniform(m_gen));
+          } while (get<position>(particles)[i].norm() > m_circle_radius);
+        }
 
         const double theta = 2 * pi * uniform(m_gen);
         get<orientation>(particles)[i] =
@@ -176,6 +185,9 @@ public:
   }
 
   void set_proliferation_rate(const double arg) { m_proliferation_rate = arg; }
+  void set_potential_well_scaling(const double arg) {
+    m_potential_well_scaling = arg;
+  }
   void set_circle_radius(const double arg) { m_circle_radius = arg; }
   void set_sigma_s(const double arg) { m_sigma_s = arg; }
   double get_sigma_s() { return m_sigma_s; }
@@ -185,6 +197,8 @@ public:
   void set_mu(const double arg) { m_mu = arg; }
   void set_nu(const double arg) { m_nu = arg; }
   void set_num_internal(const int arg) { m_num_internal = arg; }
+  void set_num_external(const int arg) { m_num_external = arg; }
+  void set_max_internal(const int arg) { m_max_internal = arg; }
   void set_translate_scale(const double arg) { m_translate_scale = arg; }
   void set_rotate_scale(const double arg) { m_rotate_scale = arg; }
   void set_temperature(const double arg) { m_temperature = arg; }
@@ -193,6 +207,9 @@ public:
   void integrate(const int timesteps) {
     GayBernePotential potential(m_sigma_s, m_k, m_kdash, m_mu, m_nu,
                                 m_epsilon_0);
+    auto potential_well = [&](const vdouble2 &r) {
+      return m_potential_well_scaling * r.norm() / m_circle_radius;
+    };
     std::uniform_real_distribution<double> uniform(0, 1);
     const double cut_off2 = std::pow(potential.cut_off(), 2);
     int accepts = 0;
@@ -204,14 +221,16 @@ public:
                           m_num_external;
 
         auto i = particles[index];
-        const auto ri = get<position>(i);
-        const auto ui = get<orientation>(i);
+        const auto &ri = get<position>(i);
+        const auto &ui = get<orientation>(i);
 
         // check if this cell will divide, otherwise do a move
         std::poisson_distribution<> poisson(m_proliferation_rate /
                                             particles.size());
-        if (poisson(m_gen) > 0) {
-          particles.push_back(ri + ui * m_sigma_s * m_k / 2);
+        if (particles.size() - m_num_external < m_max_internal &&
+            poisson(m_gen) > 0) {
+          get<position>(particles)[index] = ri - ui * m_sigma_s * m_k / 4;
+          particles.push_back(ri + ui * m_sigma_s * m_k / 4);
           get<orientation>(particles[particles.size() - 1]) = ui;
         } else {
           // get a candidate position and orientation
@@ -234,7 +253,7 @@ public:
           }
 
           // calculate the difference in potential
-          double Udiff = 0;
+          double Udiff = potential_well(candidate_pos) - potential_well(ri);
           for (int jj = 0; jj < particles.size(); ++jj) {
             const auto rj = get<position>(particles)[jj];
             const auto uj = get<orientation>(particles)[jj];
@@ -312,10 +331,13 @@ PYBIND11_MODULE(cell_pattern, m) {
       .def("set_mu", &Simulation::set_mu)
       .def("set_nu", &Simulation::set_nu)
       .def("set_num_internal", &Simulation::set_num_internal)
+      .def("set_max_internal", &Simulation::set_max_internal)
       .def("set_translate_scale", &Simulation::set_translate_scale)
       .def("set_rotate_scale", &Simulation::set_rotate_scale)
       .def("set_temperature", &Simulation::set_temperature)
       .def("set_proliferation_rate", &Simulation::set_proliferation_rate)
+      .def("set_potential_well_scaling",
+           &Simulation::set_potential_well_scaling)
       .def("seed", &Simulation::seed)
       .def("initialise", &Simulation::initialise)
       .def("integrate", &Simulation::integrate);

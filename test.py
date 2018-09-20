@@ -5,14 +5,16 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.collections import EllipseCollection
 
-N = 1
-R = 2.0
-nout = 100
-timesteps = 100
+N0 = 1
+N = 15
+R = 1.5
+nout = 200
+timesteps = 1000
 kdash = 5.0/1.0
 k = 1.5
-T = 1.0
-p = 0.01
+T = 0.2
+p = 0.001
+potential_well_scaling = 0
 
 
 def plot(filename, sim):
@@ -31,6 +33,7 @@ def plot(filename, sim):
     ec = EllipseCollection(ww, hh, aa, units='x', offsets=xy, transOffset=ax.transData)
     ax.add_collection(ec)
     ax.autoscale_view()
+    ax.quiver(xy[:, 0], xy[:, 1], u[:, 0], u[:, 1])
     ax.set_xlabel('X')
     ax.set_ylabel('y')
     ax.set_xlim(-R, R)
@@ -39,8 +42,10 @@ def plot(filename, sim):
 
 
 sim = cell_pattern.Simulation()
-sim.set_num_internal(N)
+sim.set_num_internal(N0)
+sim.set_max_internal(N)
 sim.set_proliferation_rate(p)
+sim.set_potential_well_scaling(potential_well_scaling)
 sim.set_temperature(T)
 sim.set_circle_radius(R)
 sim.set_kdash(kdash)
