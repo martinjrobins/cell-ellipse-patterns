@@ -4,9 +4,10 @@
 using namespace Aboria;
 
 ABORIA_VARIABLE(orientation, vdouble2, "orientation");
+ABORIA_VARIABLE(age, double, "cell_age");
 ABORIA_VARIABLE(fixed, uint8_t, "fixed");
 
-using Particles_t = Particles<std::tuple<orientation, fixed>, 2>;
+using Particles_t = Particles<std::tuple<orientation, fixed, age>, 2>;
 using position = Particles_t::position;
 
 /*
@@ -118,6 +119,7 @@ class Simulation {
   double m_translate_scale{0.5 / 20.0};
   double m_rotate_scale{2.0 * pi / 25.0};
   double m_temperature{1.0};
+  double m_aging{1.0};
   double m_circle_radius{5.0};
   double m_proliferation_rate{0.001};
   double m_potential_well_scaling{1};
@@ -144,6 +146,7 @@ public:
           m_circle_radius * vdouble2(std::cos(theta), std::sin(theta));
       get<orientation>(particles)[i] =
           vdouble2(-std::sin(theta), std::cos(theta));
+      get<age>(particles)[i] = 0;
       get<fixed>(particles)[i] = true;
     }
     std::uniform_real_distribution<double> uniform(-1, 1);
@@ -181,6 +184,7 @@ public:
       } while (overlap);
 
       get<fixed>(particles)[i] = false;
+      get<age>(particles)[i] = 0;
     }
   }
 
@@ -202,6 +206,7 @@ public:
   void set_translate_scale(const double arg) { m_translate_scale = arg; }
   void set_rotate_scale(const double arg) { m_rotate_scale = arg; }
   void set_temperature(const double arg) { m_temperature = arg; }
+  void set_aging(const double arg) { m_aging = arg; }
   void seed(const int arg) { m_gen.seed(arg); }
 
   void integrate(const int timesteps) {
@@ -223,6 +228,7 @@ public:
         auto i = particles[index];
         const auto &ri = get<position>(i);
         const auto &ui = get<orientation>(i);
+        const auto &agei = get<age>(i);
 
         // check if this cell will divide, otherwise do a move
         std::poisson_distribution<> poisson(m_proliferation_rate /
@@ -268,7 +274,8 @@ public:
           }
 
           // either accept or reject step
-          const double acceptance_ratio = std::exp(-Udiff / m_temperature);
+          const double acceptance_ratio =
+              std::exp(-Udiff / (std::exp(-agei * m_aging) * m_temperature));
           if ((Udiff <= 0) || (uniform(m_gen) < acceptance_ratio)) {
             // std::cout << "accepted" << std::endl;
             get<position>(i) = candidate_pos;
@@ -282,6 +289,10 @@ public:
           }
         }
       }
+    }
+
+    for (int i = 0; i < particles.size(); ++i) {
+      get<age>(particles)[i] += timesteps;
     }
 
     std::cout << "finished monte carlo steps ratio of accepts to total is "
@@ -335,6 +346,7 @@ PYBIND11_MODULE(cell_pattern, m) {
       .def("set_translate_scale", &Simulation::set_translate_scale)
       .def("set_rotate_scale", &Simulation::set_rotate_scale)
       .def("set_temperature", &Simulation::set_temperature)
+      .def("set_aging", &Simulation::set_aging)
       .def("set_proliferation_rate", &Simulation::set_proliferation_rate)
       .def("set_potential_well_scaling",
            &Simulation::set_potential_well_scaling)

@@ -6,15 +6,16 @@ import numpy as np
 from matplotlib.collections import EllipseCollection
 
 N0 = 1
-N = 15
-R = 1.5
+N = 32
+R = 2.0
 nout = 200
 timesteps = 1000
 kdash = 5.0/1.0
 k = 1.5
 T = 0.2
+A = 1.0
 p = 0.001
-potential_well_scaling = 0
+potential_well_scaling = 10
 
 
 def plot(filename, sim):
@@ -47,6 +48,7 @@ sim.set_max_internal(N)
 sim.set_proliferation_rate(p)
 sim.set_potential_well_scaling(potential_well_scaling)
 sim.set_temperature(T)
+sim.set_aging(A)
 sim.set_circle_radius(R)
 sim.set_kdash(kdash)
 sim.set_k(k)
