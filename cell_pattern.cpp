@@ -121,6 +121,7 @@ class Simulation {
   double m_temperature{1.0};
   double m_aging{1.0};
   double m_circle_radius{5.0};
+  double m_radius_init{5.0};
   double m_proliferation_rate{0.001};
   double m_potential_well_scaling{1};
   double m_orientation_well_scaling{1};
@@ -159,7 +160,7 @@ public:
         } else {
           do {
             get<position>(particles)[i] =
-                m_circle_radius * vdouble2(uniform(m_gen), uniform(m_gen));
+                m_radius_init * vdouble2(uniform(m_gen), uniform(m_gen));
           } while (get<position>(particles)[i].norm() > m_circle_radius);
         }
 
@@ -197,6 +198,7 @@ public:
     m_orientation_well_scaling = arg;
   }
   void set_circle_radius(const double arg) { m_circle_radius = arg; }
+  void set_radius_init(const double arg) { m_radius_init = arg; }
   void set_sigma_s(const double arg) { m_sigma_s = arg; }
   double get_sigma_s() { return m_sigma_s; }
   void set_k(const double arg) { m_k = arg; }
@@ -350,6 +352,7 @@ PYBIND11_MODULE(cell_pattern, m) {
       .def("size", [](Simulation &sim) { return sim.particles.size(); })
       .def("set_sigma_s", &Simulation::set_sigma_s)
       .def("set_circle_radius", &Simulation::set_circle_radius)
+      .def("set_radius_init", &Simulation::set_radius_init)
       .def("get_sigma_s", &Simulation::get_sigma_s)
       .def("set_k", &Simulation::set_k)
       .def("get_k", &Simulation::get_k)
