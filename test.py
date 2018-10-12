@@ -12,10 +12,11 @@ nout = 200
 timesteps = 1000
 kdash = 5.0/1.0
 k = 1.5
-T = 0.2
-A = 1.0
+T = 0.002
+A = 0.0
 p = 0.001
-potential_well_scaling = 10
+potential_well_scaling = 1000
+orientation_well_scaling = 10
 
 
 def plot(filename, sim):
@@ -47,6 +48,7 @@ sim.set_num_internal(N0)
 sim.set_max_internal(N)
 sim.set_proliferation_rate(p)
 sim.set_potential_well_scaling(potential_well_scaling)
+sim.set_orientation_well_scaling(orientation_well_scaling)
 sim.set_temperature(T)
 sim.set_aging(A)
 sim.set_circle_radius(R)

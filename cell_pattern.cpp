@@ -123,6 +123,7 @@ class Simulation {
   double m_circle_radius{5.0};
   double m_proliferation_rate{0.001};
   double m_potential_well_scaling{1};
+  double m_orientation_well_scaling{1};
   int m_num_external{-1};
   int m_num_internal{20};
   int m_max_internal{20};
@@ -192,6 +193,9 @@ public:
   void set_potential_well_scaling(const double arg) {
     m_potential_well_scaling = arg;
   }
+  void set_orientation_well_scaling(const double arg) {
+    m_orientation_well_scaling = arg;
+  }
   void set_circle_radius(const double arg) { m_circle_radius = arg; }
   void set_sigma_s(const double arg) { m_sigma_s = arg; }
   double get_sigma_s() { return m_sigma_s; }
@@ -212,8 +216,15 @@ public:
   void integrate(const int timesteps) {
     GayBernePotential potential(m_sigma_s, m_k, m_kdash, m_mu, m_nu,
                                 m_epsilon_0);
-    auto potential_well = [&](const vdouble2 &r) {
-      return m_potential_well_scaling * r.norm() / m_circle_radius;
+    auto potential_well = [&](const vdouble2 &r, const vdouble2 &orient) {
+      const double rn = r.norm();
+      const double pot_well = m_potential_well_scaling * rn / m_circle_radius;
+      const auto wall_orient =
+          rn == 0 ? vdouble2(0, 1) : (vdouble2(-r[1], r[0]) / rn);
+      const double orient_well = m_orientation_well_scaling *
+                                 (rn / m_circle_radius) *
+                                 (1.0 - orient.dot(wall_orient));
+      return pot_well + orient_well;
     };
     std::uniform_real_distribution<double> uniform(0, 1);
     const double cut_off2 = std::pow(potential.cut_off(), 2);
@@ -259,7 +270,8 @@ public:
           }
 
           // calculate the difference in potential
-          double Udiff = potential_well(candidate_pos) - potential_well(ri);
+          double Udiff = potential_well(candidate_pos, candidate_u) -
+                         potential_well(ri, ui);
           for (int jj = 0; jj < particles.size(); ++jj) {
             const auto rj = get<position>(particles)[jj];
             const auto uj = get<orientation>(particles)[jj];
@@ -274,6 +286,9 @@ public:
           }
 
           // either accept or reject step
+          // std::cout << "particle at " << ri << ui << " candidate at "
+          //          << candidate_pos << candidate_u << " Udiff = " << Udiff
+          //          << std::endl;
           const double acceptance_ratio =
               std::exp(-Udiff / (std::exp(-agei * m_aging) * m_temperature));
           if ((Udiff <= 0) || (uniform(m_gen) < acceptance_ratio)) {
@@ -350,6 +365,8 @@ PYBIND11_MODULE(cell_pattern, m) {
       .def("set_proliferation_rate", &Simulation::set_proliferation_rate)
       .def("set_potential_well_scaling",
            &Simulation::set_potential_well_scaling)
+      .def("set_orientation_well_scaling",
+           &Simulation::set_orientation_well_scaling)
       .def("seed", &Simulation::seed)
       .def("initialise", &Simulation::initialise)
       .def("integrate", &Simulation::integrate);
