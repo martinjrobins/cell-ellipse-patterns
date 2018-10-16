@@ -13,7 +13,7 @@ class Param():
         self.N = 15
         self.R = 4.0
         self.R_init = 2.0
-        self.nout = 50
+        self.nout = 20
         self.timesteps = 1000
         self.kdash = 5.0/1.0
         self.k = 1.5
@@ -61,6 +61,35 @@ def plot(filename, sim, i):
     fig.savefig(filename)
 
 
+def plot_multi(filename, sims):
+    fig, axs = plt.subplots(1, len(sims), clear=True, figsize=(12, 4))
+    for i, sim in enumerate(sims):
+        xy = sim.get_position()
+        u = sim.get_orientation()
+        sigma_s = sim.get_sigma_s()
+        k = sim.get_k()
+        n = sim.size()
+
+        ww = np.ones(n)*sigma_s*k
+        hh = np.ones(n)*sigma_s
+        aa = np.arctan2(u[:, 1], u[:, 0])*360/(2*3.14)
+
+        ax = axs[i]
+        ec = EllipseCollection(ww, hh, aa, units='x', offsets=xy, transOffset=ax.transData)
+        ax.add_collection(ec)
+        ax.autoscale_view()
+        ax.quiver(xy[:, 0], xy[:, 1], u[:, 0], u[:, 1])
+        ax.set_xlabel('X')
+        ax.set_ylabel('y')
+        ax.set_xlim(-2, 2)
+        ax.set_ylim(-2, 2)
+
+    axs[0].set_title('weak support\npotential well scaling = %d' % params[0].potential_well_scaling)
+    axs[1].set_title('medium support\npotential well scaling = %d' % params[1].potential_well_scaling)
+    axs[2].set_title('strong support\npotential well scaling = %d' % params[2].potential_well_scaling)
+    fig.savefig(filename)
+
+
 def run(i):
     print('running', i)
     sim = cell_pattern.Simulation()
@@ -87,5 +116,30 @@ def run(i):
         plot(params[i].filename+'_snapshot%05d.png' % j, sim, i)
 
 
-p = multiprocessing.Pool(len(params))
-p.map(run, range(len(params)))
+#p = multiprocessing.Pool(len(params))
+#p.map(run, range(len(params)))
+
+print('running')
+sims = [cell_pattern.Simulation() for i in range(len(params))]
+for i, sim in enumerate(sims):
+    sim.set_num_internal(params[i].N0)
+    sim.set_max_internal(params[i].N)
+    sim.set_proliferation_rate(params[i].p)
+    sim.set_potential_well_scaling(params[i].potential_well_scaling)
+    sim.set_orientation_well_scaling(params[i].orientation_well_scaling)
+    sim.set_temperature(params[i].T)
+    sim.set_aging(params[i].A)
+    sim.set_circle_radius(params[i].R)
+    sim.set_radius_init(params[i].R_init)
+    sim.set_kdash(params[i].kdash)
+    sim.set_k(params[i].k)
+    sim.initialise()
+    print('starting plot', i)
+    plot(params[i].filename+'_initialise.pdf', sim, i)
+    print('ending plot', i)
+
+#fig, ax = plt.subplots(figsize=(10, 10))
+for j in range(params[i].nout):
+    print('\titeration', j)
+    [sim.integrate(params[i].timesteps) for i, sim in enumerate(sims)]
+    plot_multi('all_snapshot%05d.png' % j, sims)
