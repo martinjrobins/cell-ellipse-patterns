@@ -306,15 +306,14 @@ public:
           }
         }
       }
+      for (int i = 0; i < particles.size(); ++i) {
+        get<age>(particles)[i] += 1;
+      }
     }
 
-    for (int i = 0; i < particles.size(); ++i) {
-      get<age>(particles)[i] += timesteps;
-    }
-
-    std::cout << "finished monte carlo steps ratio of accepts to total is "
-              << static_cast<double>(accepts) / (timesteps * particles.size())
-              << std::endl;
+    // std::cout << "finished monte carlo steps ratio of accepts to total is "
+    //          << static_cast<double>(accepts) / (timesteps * particles.size())
+    //          << std::endl;
   }
 };
 
