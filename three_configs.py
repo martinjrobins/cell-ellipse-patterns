@@ -16,7 +16,7 @@ class Param():
         self.R_init = 2.0
         self.nout = 10
         self.timesteps = 2000
-        self.kdash = 5.0/1.0
+        self.kdash = 5.0
         self.k = 1.2
         self.T = 20.0
         self.A = 0.001
@@ -41,34 +41,59 @@ def generate_parameter_sweeps():
 
     for pot_well_scale in 2**np.arange(3, 16):
         print('pot_well = ', pot_well_scale)
-        for seed in range(samples):
+        for seed in range(1, samples+1):
             params.append(Param(dirName + '/vary_pot_well_%d_' % pot_well_scale))
             params[-1].potential_well_scaling = pot_well_scale
             params[-1].seed = seed
 
-    for pot_well_scale in [500.0]:
+    for pot_well_scale in 2**np.array([5, 9]):
         dirName = 'vary_temp_pot_%d' % pot_well_scale
         if not os.path.exists(dirName):
             os.mkdir(dirName)
         for max_temp in 2**np.arange(-20.0, 20.0, 3.0):
             print('max_temp = ', max_temp, 'timesteps = ', params[-1].timesteps, ' pot_well_scale = ', pot_well_scale)
-            for seed in range(samples):
+            for seed in range(1, samples+1):
                 params.append(Param(dirName + '/vary_temp_pot_%d_%f_' % (pot_well_scale, max_temp)))
                 params[-1].T = max_temp
                 params[-1].seed = seed
                 params[-1].potential_well_scaling = pot_well_scale
                 params[-1].timesteps = int(-(1.0 / (params[-1].A * params[-1].nout)) * np.log(Tf/max_temp))
 
+        dirName = 'vary_num_cells_pot_%d' % pot_well_scale
+        if not os.path.exists(dirName):
+            os.mkdir(dirName)
+        for N in np.arange(2, 20, 2):
+            print('N = ', N, ' pot_well_scale = ', pot_well_scale)
+            for seed in range(1, samples+1):
+                params.append(Param(dirName + '/vary_N_pot_%d_%f_' % (pot_well_scale, N)))
+                params[-1].N0 = N
+                params[-1].N = N
+                params[-1].seed = seed
+                params[-1].potential_well_scaling = pot_well_scale
+
         dirName = 'vary_polarity_pot_%d' % pot_well_scale
         if not os.path.exists(dirName):
             os.mkdir(dirName)
         for kdash in np.arange(1.0, 25.0, 3.0)/5.0:
             print('kdash= ', kdash, ' pot_well_scale = ', pot_well_scale)
-            for seed in range(samples):
+            for seed in range(1, samples+1):
                 params.append(Param(dirName + '/vary_polarity_pot_%d_%f_' % (pot_well_scale, kdash)))
                 params[-1].kdash = kdash
                 params[-1].potential_well_scaling = pot_well_scale
                 params[-1].seed = seed
+
+        dirName = 'vary_shape_pot_%d' % pot_well_scale
+        if not os.path.exists(dirName):
+            os.mkdir(dirName)
+        for shape in np.linspace(0.5, 1.0, 10):
+            print('shape = ', shape, ' pot_well_scale = ', pot_well_scale)
+            for seed in range(1, samples+1):
+                params.append(Param(dirName + '/vary_shape_pot_%d_%f_' % (pot_well_scale, shape)))
+                params[-1].kdash = 1.0/1.0
+                params[-1].k = 1.0/shape
+                params[-1].seed = seed
+                params[-1].potential_well_scaling = pot_well_scale
+
     return params
 
 
@@ -108,6 +133,7 @@ def plot(filename, sim, i):
     ax.set_ylabel('y')
     ax.set_xlim(-2, 2)
     ax.set_ylim(-2, 2)
+    ax.set_title('job %d' % i)
     fig.savefig(filename+'.png')
     plt.close(fig)
 
